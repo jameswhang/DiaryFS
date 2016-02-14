@@ -26,7 +26,7 @@
 #include <linux/sched.h>
 #include <linux/xattr.h>
 #include <linux/mm.h>
-#include <linux/namei.h>
+#include "fs/proc/internal.h"
 
 /* The FS name */
 #define DIARYFS_NAME "diaryfs"
