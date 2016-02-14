@@ -41,7 +41,7 @@ void free_dentry_private_data(struct dentry *dentry)
 /* allocate new dentry private data */
 int new_dentry_private_data(struct dentry *dentry)
 {
-	struct diaryfs_dentry_info *info = WRAPFS_D(dentry);
+	struct diaryfs_dentry_info *info = DIARYFS_D(dentry);
 
 	/* use zalloc to init dentry_info.lower_path */
 	info = kmem_cache_zalloc(diaryfs_dentry_cachep, GFP_ATOMIC);
@@ -95,7 +95,7 @@ struct inode *diaryfs_iget(struct super_block *sb, struct inode *lower_inode)
 		return inode;
 
 	/* initialize new inode */
-	info = WRAPFS_I(inode);
+	info = DIARYFS_I(inode);
 
 	inode->i_ino = lower_inode->i_ino;
 	if (!igrab(lower_inode)) {
@@ -159,7 +159,7 @@ int diaryfs_interpose(struct dentry *dentry, struct super_block *sb,
 	struct inode *lower_inode;
 	struct super_block *lower_sb;
 
-	lower_inode = d_inode(lower_path->dentry);
+	lower_inode = lower_path->dentry->d_inode;
 	lower_sb = diaryfs_lower_super(sb);
 
 	/* check that the lower file system didn't cross a mount point */
@@ -290,12 +290,12 @@ struct dentry *diaryfs_lookup(struct inode *dir, struct dentry *dentry,
 		goto out;
 	if (ret)
 		dentry = ret;
-	if (d_inode(dentry))
-		fsstack_copy_attr_times(d_inode(dentry),
-					diaryfs_lower_inode(d_inode(dentry)));
+	if (dentry->d_inode)
+		fsstack_copy_attr_times(dentry->d_inode,
+					diaryfs_lower_inode(dentry->d_inode));
 	/* update parent directory's atime */
-	fsstack_copy_attr_atime(d_inode(parent),
-				diaryfs_lower_inode(d_inode(parent)));
+	fsstack_copy_attr_atime(parent->d_inode,
+				diaryfs_lower_inode(parent->d_inode));
 
 out:
 	diaryfs_put_lower_path(parent, &lower_parent_path);

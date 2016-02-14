@@ -293,9 +293,11 @@ static int diaryfs_readlink(struct dentry * dentry, char __user *buf, int bufsiz
 		goto out;
 	}
 
+	/*
 	err = lower_dentry->d_inode->i_op->readilnk(lower_dentry, buf, bufsize);
 	if (err < 0)
-		goto out;
+		goto out; /FIXME
+		*/
 
 	fsstack_copy_attr_atime(dentry->d_inode, lower_dentry->d_inode);
 

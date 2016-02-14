@@ -96,7 +96,7 @@ static struct inode *diaryfs_alloc_inode(struct super_block *sb) {
 	memset(inode, 0, offsetof(struct diaryfs_inode_info, vfs_inode));
 
 	inode->vfs_inode.i_version = 1; 
-	return &i->vfs_inode;
+	return &inode->vfs_inode;
 }
 
 static void diaryfs_destroy_inode(struct inode *inode) {
@@ -105,14 +105,14 @@ static void diaryfs_destroy_inode(struct inode *inode) {
 
 /* diaryfs inode cache constructor */
 static void init_once(void *obj) {
-	static diaryfs_inode_info *i = (struct diaryfs_inode_info*)obj;
+	struct diaryfs_inode_info *i = (struct diaryfs_inode_info*)obj;
 
 	inode_init_once(&i->vfs_inode);
 }
 
 int diaryfs_init_inode_cache(void) {
 	int err = 0;
-	diaryfs_inode_cache[ = 
+	diaryfs_inode_cachep = 
 		kmem_cache_create("diaryfs_inode_cache",
 						  sizeof(struct diaryfs_inode_info), 
 						  0,
@@ -129,8 +129,20 @@ void diaryfs_destroy_inode_cache(void) {
 		kmem_cache_destroy(diaryfs_inode_cachep);
 }
 
+/*
+ * Used only in nfs, to kill any pending RPC tasks, so that subsequent
+ * code can actually succeed and won't leave tasks that need handling.
+ */
+static void diaryfs_umount_begin(struct super_block *sb) {
+	struct super_block * lower_sb;
+
+	lower_sb = diaryfs_lower_super(sb);
+	if (lower_sb && lower_sb->s_op && lower_sb->s_op->umount_begin) 
+		lower_sb->s_op->umount_begin(lower_sb);
+}
+
 const struct super_operations diaryfs_sops = {
-	.put_superl	    = diaryfs_put_super,
+	.put_super	    = diaryfs_put_super,
 	.statfs			= diaryfs_statfs,
 	.remount_fs		= diaryfs_remount_fs,
 	.evict_inode	= diaryfs_evict_inode,

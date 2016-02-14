@@ -26,12 +26,16 @@
 #include <linux/sched.h>
 #include <linux/xattr.h>
 #include <linux/mm.h>
+#include <linux/namei.h>
 
 /* The FS name */
 #define DIARYFS_NAME "diaryfs"
 
 /* diaryfs root inode number */
 #define DIARYFS_ROOT_INO 1
+
+/* diaryfs magic cookie */
+#define DIARYFS_SUPER_MAGIC	0xdeadbeef
 
 /* useful for tracking code reachability */
 #define UDBG printk(KERN_DEFAULT "DBG:%s:%s:%d\n", __FILE__, __func__, __LINE__)
