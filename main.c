@@ -139,7 +139,7 @@ static int __init init_diaryfs_fs(void)
 {
 	int err;
 
-	pr_info("Registering diaryfs " DIARYFS_VERSION"\n");
+	pr_info("Registering diaryfs VER 0.1\n");
 
 	err = diaryfs_init_inode_cache();
 	if (err)

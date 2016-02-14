@@ -20,7 +20,7 @@ static int diaryfs_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
 
 	memcpy(&lower_vma, vma, sizeof(struct vm_area_struct));
 	file = lower_vma.vm_file;
-	lower_vm_ops = WRAPFS_F(file)->lower_vm_ops;
+	lower_vm_ops = DIARYFS_F(file)->lower_vm_ops;
 	BUG_ON(!lower_vm_ops);
 
 	lower_file = diaryfs_lower_file(file);
@@ -49,7 +49,7 @@ static int diaryfs_page_mkwrite(struct vm_area_struct *vma,
 
 	memcpy(&lower_vma, vma, sizeof(struct vm_area_struct));
 	file = lower_vma.vm_file;
-	lower_vm_ops = WRAPFS_F(file)->lower_vm_ops;
+	lower_vm_ops = DIARYFS_F(file)->lower_vm_ops;
 	BUG_ON(!lower_vm_ops);
 	if (!lower_vm_ops->page_mkwrite)
 		goto out;
