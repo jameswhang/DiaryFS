@@ -53,9 +53,9 @@ extern int new_dentry_private_data(struct dentry *dentry);
 extern void free_dentry_private_data(struct dentry *dentry);
 extern struct dentry *diaryfs_lookup(struct inode *dir, struct dentry *dentry,
 		unsigned int flags);
-extern struct inode *diaryfs_iget(struct super-block *sb,
+extern struct inode *diaryfs_iget(struct super_block *sb,
 		struct inode *lower_inode);
-extern int diaryfs_interpose(struct dentry *dentry, struct super_block 8sb, struct path *lower_path);
+extern int diaryfs_interpose(struct dentry *dentry, struct super_block *sb, struct path *lower_path);
 
 /* file private data */
 struct diaryfs_file_info {
@@ -69,6 +69,12 @@ struct diaryfs_inode_info {
 	struct inode vfs_inode;
 };
 
+/* diaryfs dentry data in memory */
+struct diaryfs_dentry_info {
+	spinlock_t lock; /* protects lower path */
+	struct path lower_path;
+};
+
 struct diaryfs_sb_info {
 	struct super_block *lower_sb;
 };
@@ -80,9 +86,9 @@ struct diaryfs_sb_info {
  * diaryfs_inode_info structure, DIARYFS_I will always (given a non-NULL
  * inode pointer), return a valid non-NULL pointer.
  */
-static inline struct diaryfs_inode_info *DIARYFS_I(const struct inode *inode){
-	diaryfs_inode_info * i = container_of(inode, struct(diaryfs_inode_info, vfs_inode);
-	return container_of(inode, struct(wrapfs_inode_info, vfs_inode);
+static inline struct diaryfs_inode_info *DIARYFS_I(const struct inode *inode)
+{
+	return container_of(inode, struct diaryfs_inode_info, vfs_inode);
 }
 
 /* dentry to private data */
@@ -176,12 +182,12 @@ static inline void diaryfs_put_reset_lower_path(const struct dentry *dent) {
 /* locking helpers */
 static inline struct dentry *lock_parent (struct dentry *dentry) {
 	struct dentry *dir = dget_parent(dentry);
-	mutex_lock_nested(&d_inode(dir)->i_mutex, I_MUTEX_PARENT);
+	mutex_lock_nested(&dir->d_inode->i_mutex, I_MUTEX_PARENT);
 	return dir;
 }
 
 static inline void unlock_dir(struct dentry *dir) {
-	mutex_unlock(&d_inode(dir)->i_mutex);
+	mutex_unlock(&dir->d_inode->i_mutex);
 	dput(dir);
 }
 
