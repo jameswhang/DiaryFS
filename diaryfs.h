@@ -14,6 +14,7 @@
 #include <linux/dcache.h>
 #include <linux/file.h>
 #include <linux/fs.h>
+#include <linux/aio.h>
 #include <linux/mount.h>
 #include <linux/namei.h>
 #include <linux/seq_file.h>
@@ -24,6 +25,7 @@
 #include <linux/slab.h>
 #include <linux/sched.h>
 #include <linux/xattr.h>
+#include <linux/mm.h>
 
 /* The FS name */
 #define DIARYFS_NAME "diaryfs"

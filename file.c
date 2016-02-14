@@ -16,10 +16,10 @@ static ssize_t diaryfs_read(struct file *file, char __user *buf,
 	struct dentry * dentry = file->f_path.dentry;
 
 	lower_file = diaryfs_lower_file(file);
-	err = vfs_read(lower_file, buf, count_ppos);
+	err = vfs_read(lower_file, buf, count, ppos);
 	/* update our inode atime upon a successful lower read */
 	if (err >= 0)
-		fsstack_copy_attr_atime(d_inode(dentry), file_inode(lower_file));
+		fsstack_copy_attr_atime(dentry->d_inode, file_inode(lower_file));
 
 	return err;
 }
@@ -35,8 +35,8 @@ static ssize_t diaryfs_write(struct file * file, const char __user * buf,
 	err = vfs_write(lower_file, buf, count, ppos);
 
 	if (err >= 0) {
-		fsstack_copy_attr_times(d_inode(dentry), file_inode(lower_file));
-		fsstack_copy_inode_size(d_inode(dentry), file_inode(lower_file));
+		fsstack_copy_attr_times(dentry->d_inode, file_inode(lower_file));
+		fsstack_copy_inode_size(dentry->d_inode, file_inode(lower_file));
 	}
 
 	return err;
@@ -52,7 +52,7 @@ static int diaryfs_readdir(struct file *file, struct dir_context *ctx) {
 	err = iterate_dir(lower_file, ctx);
 	file->f_pos = lower_file->f_pos;
 	if (err >= 0) 
-		fsstack_copy_attr_atime(d_inode(dentry), file_inode(lower_file));
+		fsstack_copy_attr_atime(dentry->d_inode, file_inode(lower_file));
 	return err;
 }
 
@@ -77,7 +77,7 @@ out:
 
 #ifdef CONFIG_COMPAT
 static long diaryfs_compat_ioctl(struct file * file, unsigned int cmd, 
-								unsigned log arg)  {
+								unsigned long arg)  {
 
 	int err = -ENOTTY;
 	struct file * lower_file;
@@ -105,7 +105,7 @@ static int diaryfs_mmap(struct file * file, struct vm_area_struct *vma) {
 	struct file * lower_file;
 	const struct vm_operations_struct * saved_vm_ops = NULL;
 
-	willwrite = ((vma->vm_flags | VM_SHAED | VM_WRITE) == vma->vm_flags);
+	willwrite = ((vma->vm_flags | VM_SHARED | VM_WRITE) == vma->vm_flags);
 
 	/*
 	 * File systems that don't implement ->writepage may use 
@@ -140,7 +140,7 @@ static int diaryfs_mmap(struct file * file, struct vm_area_struct *vma) {
 	file_accessed(file);
 	vma->vm_ops = &diaryfs_vm_ops;
 
-	file->file_mapping->a_ops = &diaryfs_aops; /* set our aops */
+	file->f_mapping->a_ops = &diaryfs_aops; /* set our aops */
 	if (!DIARYFS_F(file)->lower_vm_ops) /* save for our -> fault */ 
 		DIARYFS_F(file)->lower_vm_ops = saved_vm_ops;
 
@@ -178,13 +178,13 @@ static int diaryfs_open(struct inode * inode, struct file * file) {
 			fput(lower_file); /* fput calls dput for lower_dentry */
 		}
 	} else {
-		diaryfs_set_lower_file(file, lower, file);
+		diaryfs_set_lower_file(file, lower_file);
 	}
 
 	if (err) {
 		kfree(DIARYFS_F(file));
 	} else {
-		fsstack_copy_attr_all(inode, diaryfs_loewr_inode(inode));
+		fsstack_copy_attr_all(inode, diaryfs_lower_inode(inode));
 	}
 out_err:
 	return err;
@@ -194,7 +194,7 @@ static int diaryfs_flush(struct file * file, fl_owner_t id) {
 	int err = 0;
 	struct file * lower_file = NULL;
 	lower_file = diaryfs_lower_file(file);
-	if (lower_file && lower_file->f_op && lower_file->f_op->flsuh) {
+	if (lower_file && lower_file->f_op && lower_file->f_op->flush) {
 		filemap_write_and_wait(file->f_mapping);
 		err = lower_file->f_op->flush(lower_file, id);
 	}
@@ -204,7 +204,8 @@ static int diaryfs_flush(struct file * file, fl_owner_t id) {
 
 /* release all lower object ref and free file info structure */
 static int diaryfs_file_release(struct inode * inode, struct file * file ) {
-	static file * lower_file = diaryfs_lower_file(File);
+	struct file * lower_file;
+	lower_file = diaryfs_lower_file(file);
 	
 	if (lower_file) {
 		diaryfs_set_lower_file(file, NULL);
@@ -270,9 +271,10 @@ out:
 
 ssize_t diaryfs_read_iter(struct kiocb * iocb, struct iov_iter *iter) {
 	int err;
-	struct file * file = iocb->ki_filp;
-	struct file * *lower_file;
+	struct file * file;
+	struct file * lower_file;
 
+   	file = iocb->ki_filp;
 	lower_file = diaryfs_lower_file(file);
 	if (!lower_file->f_op->read_iter) {
 		err = -EINVAL;
@@ -282,10 +284,9 @@ ssize_t diaryfs_read_iter(struct kiocb * iocb, struct iov_iter *iter) {
 	get_file(lower_file);
 	iocb->ki_filp = lower_file;
 	err = lower_file->f_op->read_iter(iocb, iter);
-	iocb->ki_flip = file;
+	iocb->ki_filp = file;
 	if (err >= 0 || err == EIOCBQUEUED) {
-		fsstack_copy_attr_atime(file->f_path.dentry, file_inode(lower_file),
-		file_inode(lower_file));
+		fsstack_copy_attr_atime(file->f_path.dentry->d_inode, file_inode(lower_file));
 	}
 out:
 	return err;
@@ -293,7 +294,7 @@ out:
 
 ssize_t diaryfs_write_iter(struct kiocb * iocb, struct iov_iter *iter) {
 	int err;
-	struct file * file = iocb->ki_flip;
+	struct file * file = iocb->ki_filp;
 	struct file * lower_file = diaryfs_lower_file(file);
 
 	if (!lower_file->f_op->write_iter) {
@@ -303,14 +304,14 @@ ssize_t diaryfs_write_iter(struct kiocb * iocb, struct iov_iter *iter) {
 	get_file(lower_file); /* prevent lower file from being released */
 	iocb->ki_filp = lower_file;
 	err = lower_file->f_op->write_iter(iocb, iter);
-	iocb->ki_flip = file;
+	iocb->ki_filp = file;
 	fput(lower_file);
 
 	/* update upper inode times/sizes as needed */
 	if (err >= 0 || err == -EIOCBQUEUED) {
-		fsstack_copy_inode_size(d_inode(file->f_path.dentry),
+		fsstack_copy_inode_size(file->f_path.dentry->d_inode,
 				file_inode(lower_file));
-		fsstack_copy_attr_times(d_inode(file->f_path.dentry),
+		fsstack_copy_attr_times(file->f_path.dentry->d_inode,
 				file_inode(lower_file));
 	}
 out:
@@ -321,7 +322,7 @@ out:
 /*
  * fop struct 
  */
-const struct file_operations = diaryfs_main_fops = { 
+const struct file_operations diaryfs_main_fops = { 
 	.llseek 	 		= generic_file_llseek,
 	.read				= diaryfs_read,
 	.write				= diaryfs_write,
@@ -332,7 +333,7 @@ const struct file_operations = diaryfs_main_fops = {
 	.mmap				= diaryfs_mmap,
 	.open				= diaryfs_open,
 	.flush				= diaryfs_flush,
-	.release			= diaryfs_release,
+	.release			= diaryfs_file_release,
 	.fsync				= diaryfs_fsync,
 	.fasync				= diaryfs_fasync,
 	.read_iter			= diaryfs_read_iter,
