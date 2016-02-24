@@ -1,6 +1,7 @@
 # DiaryFS
 A journaling filesystem for the Linux kernel
 
+# This is still a work in progress!
 
 
 ## What is this?
