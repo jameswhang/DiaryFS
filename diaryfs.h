@@ -26,7 +26,9 @@
 #include <linux/sched.h>
 #include <linux/xattr.h>
 #include <linux/mm.h>
-#include "../fs/internal.h"
+
+// This is for vfs_path_lookup
+extern int vfs_path_lookup(struct dentry * dentry, struct vfsmount *mnt, const char * name, unsigned int flags, struct path *path);
 
 /* The FS name */
 #define DIARYFS_NAME "diaryfs"

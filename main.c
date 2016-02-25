@@ -139,7 +139,7 @@ static int __init init_diaryfs_fs(void)
 {
 	int err;
 
-	pr_info("Registering diaryfs VER 0.1\n");
+	pr_info("Registering diaryfs v.0.1");
 
 	err = diaryfs_init_inode_cache();
 	if (err)
@@ -166,7 +166,7 @@ static void __exit exit_diaryfs_fs(void)
 
 MODULE_AUTHOR("James Whang, Northwestern University"
 	      "sungyoonwhang2017@u.northwestern.edu");
-MODULE_DESCRIPTION("Diaryfs " DIARYFS_VERSION);
+MODULE_DESCRIPTION("Diaryfs 0.1");
 MODULE_LICENSE("GPL");
 
 module_init(init_diaryfs_fs);
