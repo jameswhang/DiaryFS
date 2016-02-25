@@ -139,7 +139,7 @@ static int __init init_diaryfs_fs(void)
 {
 	int err;
 
-	pr_info("Registering diaryfs v.0.1");
+	printk("Registering diaryfs v.0.1");
 
 	err = diaryfs_init_inode_cache();
 	if (err)
@@ -150,6 +150,7 @@ static int __init init_diaryfs_fs(void)
 	err = register_filesystem(&diaryfs_fs_type);
 out:
 	if (err) {
+		printk("diaryfs: error\n");
 		diaryfs_destroy_inode_cache();
 		diaryfs_destroy_dentry_cache();
 	}
@@ -161,7 +162,7 @@ static void __exit exit_diaryfs_fs(void)
 	diaryfs_destroy_inode_cache();
 	diaryfs_destroy_dentry_cache();
 	unregister_filesystem(&diaryfs_fs_type);
-	pr_info("Completed diaryfs module unload\n");
+	printk("Completed diaryfs module unload\n");
 }
 
 MODULE_AUTHOR("James Whang, Northwestern University"

@@ -15,6 +15,8 @@ static ssize_t diaryfs_read(struct file *file, char __user *buf,
 	struct file * lower_file;
 	struct dentry * dentry = file->f_path.dentry;
 
+	printk("DiaryFS: Reading the file %s", file->f_path.dentry->d_iname);
+
 	lower_file = diaryfs_lower_file(file);
 	err = vfs_read(lower_file, buf, count, ppos);
 	/* update our inode atime upon a successful lower read */
@@ -26,10 +28,13 @@ static ssize_t diaryfs_read(struct file *file, char __user *buf,
 
 static ssize_t diaryfs_write(struct file * file, const char __user * buf, 
 							size_t count, loff_t *ppos) {
+
 	int err;
 
 	struct file * lower_file;
 	struct dentry * dentry = file->f_path.dentry;
+
+	printk("DiaryFS: Writing to the file %s", file->f_path.dentry->d_iname);
 
 	lower_file = diaryfs_lower_file(file);
 	err = vfs_write(lower_file, buf, count, ppos);
