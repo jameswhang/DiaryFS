@@ -1,5 +1,5 @@
 # DiaryFS
-A journaling filesystem for the Linux kernel
+A lightweight, kernel-level versioning filesystem for the Linux kernel
 
 # This is still a work in progress!
 
