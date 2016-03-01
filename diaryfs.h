@@ -5,8 +5,11 @@
  * it under the terms of the GNU General Public License version 2 as 
  * published by the Free Software Foundation
  *
- * This code 
- */
+ * THANKSTO: 	
+ * The wrapfs team @ Stony Brook University
+ *  - Erez Zadok
+ * 	- Shrikar Archak
+ */ 
 
 #ifndef __DIARYFS_H_
 #define __DIARYFS_H_
@@ -26,6 +29,7 @@
 #include <linux/sched.h>
 #include <linux/xattr.h>
 #include <linux/mm.h>
+#include <linux/hash.h>
 
 // This is for vfs_path_lookup
 extern int vfs_path_lookup(struct dentry * dentry, struct vfsmount *mnt, const char * name, unsigned int flags, struct path *path);

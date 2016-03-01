@@ -4,10 +4,14 @@
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as 
  * published by the Free Software Foundation
- */
+ *
+ * THANKSTO: 	
+ * The wrapfs team @ Stony Brook University
+ *  - Erez Zadok
+ * 	- Shrikar Archak
+ */ 
 
 #include "diaryfs.h"
-#include <linux/hash.h>
 
 static ssize_t diaryfs_read(struct file *file, char __user *buf,
 		size_t count, loff_t *ppos)
@@ -78,6 +82,7 @@ static ssize_t diaryfs_write(struct file * file, const char __user * buf,
 	for (i = 0; i < diff_count; i++) {
 		// TODO
 		// Save the diff to a file
+		vfs_write(
 	}
 	
 
