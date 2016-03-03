@@ -39,8 +39,8 @@ static ssize_t diaryfs_write(struct file * file, const char __user * buf,
 
 	struct file * lower_file;
 	struct dentry * dentry = file->f_path.dentry;
-	char __user * temp_buf = kmalloc(count * sizeof(char)); // temporary buffer to store the read
-	char __user * diff_buf = kmalloc(count * sizeof(char));
+	char __user * temp_buf = kmalloc(count * sizeof(char), GFP_ATOMIC); // temporary buffer to store the read
+	char __user * diff_buf = kmalloc(count * sizeof(char), GFP_ATOMIC);
 	char __user * diffs[(count / 8000) + (count % 8000 != 0)]; // saves pointers to blocks to save
 	uint32_t diff_count = 0;
 
@@ -59,18 +59,17 @@ static ssize_t diaryfs_write(struct file * file, const char __user * buf,
 
 	err = vfs_read(lower_file, temp_buf, count, ppos);
 
-	hash_buf = temp_buf;
-
 	while (hashed < count) {
 		tohash = count - hashed > 8000 ? 8000 : hashed - count;
 
-		old_buf = temp_buf + hash;
-		new_buf = buf + hash;
+		buf_old = temp_buf + hashed;
+		buf_new = buf + hashed;
 
 		hash_old = arch_fast_hash2(buf_old, tohash, 0);
 		hash_new = arch_fast_hash2(buf_new, tohash, 0);
 		
 		if (hash_old != hash_new) {
+			printk("DiaryFS: There are some changes to the file!\n");
 			diffs[diff_count] = buf_old;
 		}
 
@@ -79,11 +78,10 @@ static ssize_t diaryfs_write(struct file * file, const char __user * buf,
 		hashed += 8000;
 	}
 	
+	/*
 	for (i = 0; i < diff_count; i++) {
-		// TODO
-		// Save the diff to a file
-		vfs_write(
 	}
+	*/
 	
 
 	err = vfs_write(lower_file, buf, count, ppos);
