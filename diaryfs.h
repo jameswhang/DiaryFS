@@ -30,6 +30,7 @@
 #include <linux/xattr.h>
 #include <linux/mm.h>
 #include <linux/hash.h>
+#include <linux/jhash.h>
 
 // This is for vfs_path_lookup
 extern int vfs_path_lookup(struct dentry * dentry, struct vfsmount *mnt, const char * name, unsigned int flags, struct path *path);
@@ -72,6 +73,7 @@ extern int diaryfs_interpose(struct dentry *dentry, struct super_block *sb, stru
 /* file private data */
 struct diaryfs_file_info {
 	struct file * lower_file;
+	struct file * log_file;
 	const struct vm_operations_struct * lower_vm_ops;
 };
 
@@ -154,6 +156,23 @@ static inline void diaryfs_get_lower_path(const struct dentry *dent,
 	pathcpy(lower_path, &DIARYFS_D(dent)->lower_path);
 	path_get(lower_path);
 	spin_unlock(&DIARYFS_D(dent)->lock);
+	return;
+}
+
+
+/* Returns struct path based on the lower_path of file. 
+ * Caller must path_put it */
+static inline void diaryfs_get_log_path(const struct path *lower_path,
+		struct path *log_path) {
+	char new_name[256];
+	log_path = kzalloc(sizeof(struct path), GFP_KERNEL);
+	memcpy(log_path, lower_path, sizeof(struct path)); // copy all attrs of lower_path
+	dentry_path_raw(lower_path->dentry, new_name, 128);
+	new_name[129] = '.';
+	new_name[130] = 'l';
+	new_name[131] = 'o';
+	new_name[132] = 'g';
+	memcpy(log_path->dentry->d_iname, new_name, 256);
 	return;
 }
 

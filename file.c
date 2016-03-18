@@ -39,43 +39,51 @@ static ssize_t diaryfs_write(struct file * file, const char __user * buf,
 
 	struct file * lower_file;
 	struct dentry * dentry = file->f_path.dentry;
-	char __user * temp_buf = kmalloc(count * sizeof(char), GFP_ATOMIC); // temporary buffer to store the read
-	char __user * diff_buf = kmalloc(count * sizeof(char), GFP_ATOMIC);
+	char __user * temp_buf = kzalloc(count * sizeof(char), GFP_KERNEL); // temporary buffer to store the read
+	char __user * diff_buf = kzalloc(count * sizeof(char), GFP_KERNEL);
 	char __user * diffs[(count / 8000) + (count % 8000 != 0)]; // saves pointers to blocks to save
 	uint32_t diff_count = 0;
 
 	char __user * buf_old; // 8KB block of old file
 	char __user * buf_new; // 8KB block of new file
 
-	uint32_t hash_old; // Hash of the old file block
-	uint32_t hash_new; // Hash of the new file block
+	uint32_t hash_old = 0; // Hash of the old file block
+	uint32_t hash_new = 0; // Hash of the new file block
 
 	size_t hashed = 0;
 	size_t tohash;
 
 	printk("DiaryFS: Writing to the file %s", file->f_path.dentry->d_iname);
 
+
+	if (temp_buf == NULL) {
+		printk("DiaryFS: WARNING!!! NULL POINTER!!!\n");
+	}
+
 	lower_file = diaryfs_lower_file(file);
 
-	err = vfs_read(lower_file, temp_buf, count, ppos);
+	err = diaryfs_read(file, temp_buf, count, ppos);
 
-	while (hashed < count) {
-		tohash = count - hashed > 8000 ? 8000 : hashed - count;
+	if (temp_buf != NULL) {
 
-		buf_old = temp_buf + hashed;
-		buf_new = buf + hashed;
+		while (hashed < count) {
+			tohash = count - hashed > 8000 ? 8000 : hashed - count;
 
-		hash_old = arch_fast_hash2(buf_old, tohash, 0);
-		hash_new = arch_fast_hash2(buf_new, tohash, 0);
-		
-		if (hash_old != hash_new) {
-			printk("DiaryFS: There are some changes to the file!\n");
-			diffs[diff_count] = buf_old;
+			buf_old = temp_buf + hashed;
+			buf_new = buf + hashed;
+
+			hash_old = jhash(buf_old, tohash, 0);
+			hash_new = jhash(buf_new, tohash, 0);
+
+			if (hash_old != hash_new) {
+				printk("DiaryFS: There are some changes to the file!\n");
+				diffs[diff_count] = buf_old;
+			}
+
+			buf_old += 8000;
+			buf_new += 8000;
+			hashed += 8000;
 		}
-
-		buf_old += 8000;
-		buf_new += 8000;
-		hashed += 8000;
 	}
 	
 	/*
@@ -91,6 +99,7 @@ static ssize_t diaryfs_write(struct file * file, const char __user * buf,
 		fsstack_copy_inode_size(dentry->d_inode, file_inode(lower_file));
 	}
 
+	printk("DiaryFS: Finished writing!!\n");
 	return err;
 }
 
@@ -203,7 +212,9 @@ out:
 static int diaryfs_open(struct inode * inode, struct file * file) {
 	int err = 0;
 	struct file * lower_file = NULL;
+	struct file * log_file = NULL;
 	struct path lower_path;
+	struct path log_path;
 
 	/* don't open unhashed or deleted files */
 	if (d_unhashed(file->f_path.dentry)) {
@@ -219,8 +230,11 @@ static int diaryfs_open(struct inode * inode, struct file * file) {
 
 	/* open lower object and link diaryfs's file struct to lower's */
 	diaryfs_get_lower_path(file->f_path.dentry, &lower_path);
+	diaryfs_get_log_path(&lower_path, &log_path);
 	lower_file = dentry_open(&lower_path, file->f_flags, current_cred());
+	lower_file = dentry_open(&log_path, file->f_flags, current_cred());
 	path_put(&lower_path);
+	path_put(&log_path);
 
 	if (IS_ERR(lower_file)) {
 		err = PTR_ERR(lower_file);
