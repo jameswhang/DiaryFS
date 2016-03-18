@@ -20,7 +20,9 @@ static ssize_t diaryfs_read(struct file *file, char __user *buf,
 	struct file * lower_file;
 	struct dentry * dentry = file->f_path.dentry;
 
-	printk("DiaryFS: Reading the file %s", file->f_path.dentry->d_iname);
+	printk("DiaryFS [Read] File: %s\n", file->f_path.dentry->d_iname);
+	printk("DiaryFS [Read] Count: %llu\n", count);
+	printk("DiaryFS [Read] ppos: %llu\n", ppos);
 
 	lower_file = diaryfs_lower_file(file);
 	err = vfs_read(lower_file, buf, count, ppos);
@@ -29,6 +31,12 @@ static ssize_t diaryfs_read(struct file *file, char __user *buf,
 		fsstack_copy_attr_atime(dentry->d_inode, file_inode(lower_file));
 
 	return err;
+}
+
+static uint32_t diaryfs_compute_hash(struct file * file, loff_t * ppos) {
+	char buf[4096]; // TODO: Fix this to file->size
+	ssize_t read_size = diaryfs_read(file, &buf, 4096, ppos);
+	return jhash(buf, 4096, read_size);
 }
 
 static ssize_t diaryfs_write(struct file * file, const char __user * buf, 
@@ -40,8 +48,6 @@ static ssize_t diaryfs_write(struct file * file, const char __user * buf,
 	struct file * lower_file;
 	struct file * log_file;
 	struct dentry * dentry = file->f_path.dentry;
-//	char __user * temp_buf = kzalloc(count * sizeof(char), GFP_KERNEL); // temporary buffer to store the read
-//	char __user * diff_buf = kzalloc(count * sizeof(char), GFP_KERNEL);
 	char __user * diffs[(count / 8000) + (count % 8000 != 0)]; // saves pointers to blocks to save
 	uint32_t diff_count = 0;
 
@@ -57,49 +63,17 @@ static ssize_t diaryfs_write(struct file * file, const char __user * buf,
 
 	char * test_str = "logging test";
 
-	printk("DiaryFS: Writing to the file %s", file->f_path.dentry->d_iname);
-	printk("DiaryFS: BUF is %s", buf);
+	uint32_t hash = jhash(buf, count, 0);
+	uint32_t old_hash = diaryfs_compute_hash(file, ppos);
 
-
-//	if (temp_buf == NULL) {
-//		printk("DiaryFS: WARNING!!! NULL POINTER!!!\n");
-//	}
+	printk("DiaryFS: Writing to the file %s\n", file->f_path.dentry->d_iname);
+	printk("DiaryFS: BUF is %s\n", buf);
+	printk("DiaryFS: count is %llu\n", count);
+	printk("DiaryFS: ppos is %llu\n", ppos);
+	printk("DiaryFS: new_hash is %llu\n", hash);
+	printk("DiaryFS: old_hash is %llu\n", old_hash);
 
 	lower_file = diaryfs_lower_file(file);
-
-//	err = diaryfs_read(file, temp_buf, count, ppos);
-
-//	log_file = kzalloc(count * sizeof(struct file), GFP_KERNEL);
-
-	/*
-	if (temp_buf != NULL) {
-
-		while (hashed < count) {
-			tohash = count - hashed > 8000 ? 8000 : hashed - count;
-
-			buf_old = temp_buf + hashed;
-			buf_new = buf + hashed;
-
-			hash_old = jhash(buf_old, tohash, 0);
-			hash_new = jhash(buf_new, tohash, 0);
-
-			if (hash_old != hash_new) {
-				printk("DiaryFS: There are some changes to the file!\n");
-				diffs[diff_count] = buf_old;
-			}
-
-			buf_old += 8000;
-			buf_new += 8000;
-			hashed += 8000;
-		}
-	}
-	*/
-	
-	/*
-	for (i = 0; i < diff_count; i++) {
-	}
-	*/
-	
 
 	err = vfs_write(lower_file, buf, count, ppos);
 
