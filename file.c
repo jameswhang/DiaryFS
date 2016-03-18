@@ -26,6 +26,7 @@ static ssize_t diaryfs_read(struct file *file, char __user *buf,
 
 	lower_file = diaryfs_lower_file(file);
 	err = vfs_read(lower_file, buf, count, ppos);
+
 	/* update our inode atime upon a successful lower read */
 	if (err >= 0)
 		fsstack_copy_attr_atime(dentry->d_inode, file_inode(lower_file));
@@ -33,10 +34,24 @@ static ssize_t diaryfs_read(struct file *file, char __user *buf,
 	return err;
 }
 
-static uint32_t diaryfs_compute_hash(struct file * file, loff_t * ppos) {
-	char buf[4096]; // TODO: Fix this to file->size
-	ssize_t read_size = diaryfs_read(file, &buf, 4096, ppos);
-	return jhash(buf, 4096, read_size);
+static uint32_t diaryfs_compute_hash(struct file * file, char * buf, loff_t * ppos) {
+	ssize_t read_size = diaryfs_read(file, buf, 4096, ppos);
+//	printk("DiaryFS: [hash] buf: %s\n", buf);
+	return jhash(buf, 4096, 0);
+}
+
+void diaryfs_diff_gen(char * buf1, char * buf2, size_t bsize_1, size_t bsize_2, char * diff_buf) {
+	int size = bsize_1 < bsize_2 ? bsize_1 : bsize_2;
+	int i;
+	int diff_offset = 0;
+	printk("DiaryFS: [DiffGen] size: %llu\n", size);
+
+	for(i = 0; i < size; i++) {
+		if (buf1[i] != buf2[i]) {
+			diff_buf[diff_offset++] = buf2[i];
+		}
+	}
+	printk("DiaryFS: [DiffGen] diff: %s\n", diff_buf);
 }
 
 static ssize_t diaryfs_write(struct file * file, const char __user * buf, 
@@ -60,18 +75,27 @@ static ssize_t diaryfs_write(struct file * file, const char __user * buf,
 	size_t hashed = 0;
 	size_t tohash;
 
-
 	char * test_str = "logging test";
 
-	uint32_t hash = jhash(buf, count, 0);
-	uint32_t old_hash = diaryfs_compute_hash(file, ppos);
+	char diff_buf[8192];
+	char old_buf[8192]; // TODO: Fix these hardcoded sizes
 
-	printk("DiaryFS: Writing to the file %s\n", file->f_path.dentry->d_iname);
-	printk("DiaryFS: BUF is %s\n", buf);
-	printk("DiaryFS: count is %llu\n", count);
-	printk("DiaryFS: ppos is %llu\n", ppos);
-	printk("DiaryFS: new_hash is %llu\n", hash);
-	printk("DiaryFS: old_hash is %llu\n", old_hash);
+	uint32_t hash = jhash(buf, count, 0);
+	uint32_t old_hash = diaryfs_compute_hash(file, old_buf, ppos);
+
+	if (hash != old_hash) {
+		diaryfs_diff_gen(buf, old_buf, count, count, diff_buf);
+	}
+
+
+	printk("DiaryFS: [Write] File: %s\n", file->f_path.dentry->d_iname);
+	printk("DiaryFS: [Write] Buf: %s\n", buf);
+	printk("DiaryFS: [Write] old_buf: %s\n", old_buf);
+	printk("DiaryFS: [Write] diff: %s\n", diff_buf);
+	printk("DiaryFS: [Write] Count: %llu\n", count);
+	printk("DiaryFS: [Write] ppos: %llu\n", ppos);
+	printk("DiaryFS: [Write] new_hash: %llu\n", hash);
+	printk("DiaryFS: [Write] old_hash: %llu\n", old_hash);
 
 	lower_file = diaryfs_lower_file(file);
 
