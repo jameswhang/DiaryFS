@@ -38,9 +38,10 @@ static ssize_t diaryfs_write(struct file * file, const char __user * buf,
 	int i;
 
 	struct file * lower_file;
+	struct file * log_file;
 	struct dentry * dentry = file->f_path.dentry;
-	char __user * temp_buf = kzalloc(count * sizeof(char), GFP_KERNEL); // temporary buffer to store the read
-	char __user * diff_buf = kzalloc(count * sizeof(char), GFP_KERNEL);
+//	char __user * temp_buf = kzalloc(count * sizeof(char), GFP_KERNEL); // temporary buffer to store the read
+//	char __user * diff_buf = kzalloc(count * sizeof(char), GFP_KERNEL);
 	char __user * diffs[(count / 8000) + (count % 8000 != 0)]; // saves pointers to blocks to save
 	uint32_t diff_count = 0;
 
@@ -53,17 +54,24 @@ static ssize_t diaryfs_write(struct file * file, const char __user * buf,
 	size_t hashed = 0;
 	size_t tohash;
 
+
+	char * test_str = "logging test";
+
 	printk("DiaryFS: Writing to the file %s", file->f_path.dentry->d_iname);
+	printk("DiaryFS: BUF is %s", buf);
 
 
-	if (temp_buf == NULL) {
-		printk("DiaryFS: WARNING!!! NULL POINTER!!!\n");
-	}
+//	if (temp_buf == NULL) {
+//		printk("DiaryFS: WARNING!!! NULL POINTER!!!\n");
+//	}
 
 	lower_file = diaryfs_lower_file(file);
 
-	err = diaryfs_read(file, temp_buf, count, ppos);
+//	err = diaryfs_read(file, temp_buf, count, ppos);
 
+//	log_file = kzalloc(count * sizeof(struct file), GFP_KERNEL);
+
+	/*
 	if (temp_buf != NULL) {
 
 		while (hashed < count) {
@@ -85,6 +93,7 @@ static ssize_t diaryfs_write(struct file * file, const char __user * buf,
 			hashed += 8000;
 		}
 	}
+	*/
 	
 	/*
 	for (i = 0; i < diff_count; i++) {
@@ -230,11 +239,11 @@ static int diaryfs_open(struct inode * inode, struct file * file) {
 
 	/* open lower object and link diaryfs's file struct to lower's */
 	diaryfs_get_lower_path(file->f_path.dentry, &lower_path);
-	diaryfs_get_log_path(&lower_path, &log_path);
+//	diaryfs_get_log_path(&lower_path, &log_path);
 	lower_file = dentry_open(&lower_path, file->f_flags, current_cred());
-	lower_file = dentry_open(&log_path, file->f_flags, current_cred());
+	//lower_file = dentry_open(&log_path, file->f_flags, current_cred());
 	path_put(&lower_path);
-	path_put(&log_path);
+	//path_put(&log_path);
 
 	if (IS_ERR(lower_file)) {
 		err = PTR_ERR(lower_file);

@@ -73,7 +73,7 @@ extern int diaryfs_interpose(struct dentry *dentry, struct super_block *sb, stru
 /* file private data */
 struct diaryfs_file_info {
 	struct file * lower_file;
-	struct file * log_file;
+//	struct file * log_file;
 	const struct vm_operations_struct * lower_vm_ops;
 };
 
